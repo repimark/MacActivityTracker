@@ -42,13 +42,25 @@ class TimeTrackerApp(rumps.App):
         self.last_activity = datetime.now()
         self.idle_threshold = 300  # 5 minutes in seconds
         
-        # Live tracking menu items (will be updated dynamically)
-        self.live_tracking_items = []
+        # Create menu items that will be updated dynamically
+        self.total_time_item = rumps.MenuItem("⏱️  Total: 0m", callback=None)
+        self.app1_item = rumps.MenuItem("", callback=None)
+        self.app2_item = rumps.MenuItem("", callback=None)
+        self.app3_item = rumps.MenuItem("", callback=None)
+        self.app4_item = rumps.MenuItem("", callback=None)
+        self.app5_item = rumps.MenuItem("", callback=None)
         
         # Menu items
         self.menu = [
             rumps.MenuItem("📊 Live Tracking", callback=None),
             rumps.MenuItem("─" * 40, callback=None),
+            self.total_time_item,
+            rumps.MenuItem("─" * 40, callback=None),
+            self.app1_item,
+            self.app2_item,
+            self.app3_item,
+            self.app4_item,
+            self.app5_item,
             None,
             rumps.MenuItem("Today's Summary", callback=self.show_today_summary),
             rumps.MenuItem("View Report", callback=self.view_report),
@@ -242,6 +254,13 @@ class TimeTrackerApp(rumps.App):
         while True:
             try:
                 if not self.is_tracking:
+                    # Show paused state
+                    self.total_time_item.title = "⏸️  Tracking Paused"
+                    self.app1_item.title = ""
+                    self.app2_item.title = ""
+                    self.app3_item.title = ""
+                    self.app4_item.title = ""
+                    self.app5_item.title = ""
                     time.sleep(5)
                     continue
                 
@@ -267,34 +286,17 @@ class TimeTrackerApp(rumps.App):
                 # Calculate total time
                 total_time = sum(duration for _, duration in sorted_apps)
                 
-                # Clear existing live tracking items from menu
-                # Remove old items (indices 2 to 2+len(live_tracking_items)-1)
-                while len(self.live_tracking_items) > 0:
-                    item = self.live_tracking_items.pop()
-                    try:
-                        del self.menu[2]
-                    except:
-                        break
+                # Update total time item
+                self.total_time_item.title = f"⏱️  Total: {self.format_duration(total_time)}"
                 
-                # Add new live tracking items
-                new_items = []
+                # Update app items
+                app_items = [self.app1_item, self.app2_item, self.app3_item, 
+                            self.app4_item, self.app5_item]
                 
-                if sorted_apps:
-                    # Add total time at the top
-                    total_item = rumps.MenuItem(
-                        f"⏱️  Total: {self.format_duration(total_time)}",
-                        callback=None
-                    )
-                    self.menu.insert(2, total_item)
-                    new_items.append(total_item)
-                    
-                    # Add separator
-                    sep = rumps.MenuItem("─" * 40, callback=None)
-                    self.menu.insert(3, sep)
-                    new_items.append(sep)
-                    
-                    # Add top 5 apps
-                    for i, (app_name, duration) in enumerate(sorted_apps):
+                for i in range(5):
+                    if i < len(sorted_apps):
+                        app_name, duration = sorted_apps[i]
+                        
                         # Add active indicator for current app
                         indicator = "▶ " if app_name == self.current_app else "  "
                         
@@ -304,24 +306,18 @@ class TimeTrackerApp(rumps.App):
                         # Calculate percentage
                         percentage = (duration / total_time * 100) if total_time > 0 else 0
                         
-                        item_text = f"{indicator}{display_name}: {self.format_duration(duration)} ({percentage:.0f}%)"
-                        menu_item = rumps.MenuItem(item_text, callback=None)
-                        
-                        self.menu.insert(4 + i, menu_item)
-                        new_items.append(menu_item)
-                else:
-                    # No data yet
-                    no_data_item = rumps.MenuItem("No tracking data yet...", callback=None)
-                    self.menu.insert(2, no_data_item)
-                    new_items.append(no_data_item)
-                
-                self.live_tracking_items = new_items
+                        app_items[i].title = f"{indicator}{display_name}: {self.format_duration(duration)} ({percentage:.0f}%)"
+                    else:
+                        # Clear unused slots
+                        app_items[i].title = ""
                 
                 # Update every 5 seconds
                 time.sleep(5)
                 
             except Exception as e:
                 print(f"Menu update error: {e}")
+                import traceback
+                traceback.print_exc()
                 time.sleep(10)
     
     def format_duration(self, seconds):
@@ -383,20 +379,6 @@ class TimeTrackerApp(rumps.App):
                                 self.session_start, datetime.now())
                 self.current_app = None
                 self.session_start = None
-            
-            # Clear live tracking items when paused
-            while len(self.live_tracking_items) > 0:
-                item = self.live_tracking_items.pop()
-                try:
-                    del self.menu[2]
-                except:
-                    break
-            
-            # Add paused message
-            if not self.is_tracking:
-                paused_item = rumps.MenuItem("⏸️  Tracking Paused", callback=None)
-                self.menu.insert(2, paused_item)
-                self.live_tracking_items.append(paused_item)
     
     @rumps.clicked("Export Data")
     def export_data(self, _):
