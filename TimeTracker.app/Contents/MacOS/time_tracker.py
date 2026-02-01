@@ -471,6 +471,7 @@ class TimeTrackerApp(rumps.App):
 <html>
 <head>
     <title>Time Tracker Report - {today}</title>
+    <meta charset="utf-8"/>
     <style>
         body {{
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
